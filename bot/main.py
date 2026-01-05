@@ -147,6 +147,8 @@ def youtube_blocked_test(message):
             if not line.strip():
                 continue
 
+            print(f"[yt-dlp] {line.strip()}")  # лог в stdout → journalctl
+
             # Попытка найти прогресс
             progress_match = re.search(r'(\d{1,3}\.\d+)%', line)
             if progress_match:
@@ -438,8 +440,8 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         "--retries", "5",
         "--fragment-retries", "5",
         "--continue",
-        "--no-warnings",
-        "--quiet",
+#        "--no-warnings",
+#        "--quiet",
         url,
     ]
 
