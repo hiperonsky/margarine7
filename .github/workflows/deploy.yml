@@ -1,46 +1,20 @@
-name: Deploy
+name: Deploy margarine7 to Server2
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Клонирование репозитория
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # 2. Настройка SSH
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519_deploy_server
-          chmod 600 ~/.ssh/id_ed25519_deploy_server
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          ssh-keyscan 2.59.183.62 >> ~/.ssh/known_hosts
-
-      # 3. Тестирование подключения к GitHub
-      - name: Test SSH Connection to GitHub
-        run: |
-          export GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519_deploy_server -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
-          git ls-remote git@github.com:hiperonsky/Margarine6.git
-
-      # 4. Тестирование подключения к серверу
-      - name: Test SSH Connection to Server
-        run: |
-          ssh -i ~/.ssh/id_ed25519_deploy_server root@2.59.183.62 "echo 'Connection successful'"
-
-      # 5. Пуллим изменения и деплоим на сервер
-      - name: Deploy to server
-        run: |
-          export GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519_deploy_server -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
-          git remote set-url origin git@github.com:hiperonsky/Margarine6.git
-          git pull origin main
-          ssh -i ~/.ssh/id_ed25519_deploy_server root@2.59.183.62 "
-            set -e
-            cd /root/Margarine6_bot && git pull origin main && ./deploy.sh
-          "
+      - name: Run deploy script on server2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST2 }}
+          username: ${{ secrets.SSH_USER2 }}
+          key: ${{ secrets.DEPLOY_KEY2 }}
+          script: |
+            cd /opt/margarine7
+            bash ./deploy.sh
