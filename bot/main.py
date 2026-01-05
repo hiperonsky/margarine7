@@ -467,9 +467,6 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         if not line.strip():
             continue
 
-        output_lines.append(line)
-        log(f"[yt-dlp] {line.strip()}")
-
         text = line.rstrip("\n")
         output_lines.append(text)
         log(f"[yt-dlp] {text}")
