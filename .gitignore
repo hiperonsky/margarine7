@@ -1,0 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Backup / temporary files
+*.save
+*.bak
+*.swp
+*.swo
+*~
+
+# Персональные или чувствительные файлы
+.env           # файл с настоящими переменными окружения
+.env.*         # на всякий случай, если есть .env.local, .env.production и т.п.
+
+# Cookies, авторизационные данные
+cookies.txt
+web_auth_storage.txt
+
+# Конвертированные видео или временные файлы
+converted/
+*.part
+*.temp
+
+# Игнорировать все .mp4, кроме margarine_intro.mp4
+*.mp4
+!margarine_intro.mp4
+
+# Развёртывание и логи
+*.log
+deploy.log
+
+# Служебные файлы операционных систем и IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
