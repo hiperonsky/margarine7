@@ -418,6 +418,73 @@ def download_video_file(url):
         return download_with_options(url)
     except Exception as e:
         raise RuntimeError(f"[BOT] Ошибка при скачивании видео: {e}")
+    
+
+def download_with_progress(url, bot, chat_id, status_message, download_dir):
+    os.makedirs(download_dir, exist_ok=True)
+    output_template = os.path.join(download_dir, '%(title)s.%(ext)s')
+    format_str = get_format_str(url)
+
+    ytdlp_command = [
+        "yt-dlp",
+        "-f", format_str,
+        "-o", output_template,
+        "--merge-output-format", "mp4",
+        "--force-keyframes-at-cuts",
+        "--no-playlist",
+        "--no-sabr",
+        "--restrict-filenames",
+        "--geo-bypass",
+        "--retries", "5",
+        "--fragment-retries", "5",
+        "--continue",
+        "--no-warnings",
+        "--quiet",
+        url,
+    ]
+
+    process = subprocess.Popen(
+        ytdlp_command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+
+    last_edit_time = 0
+    for line in process.stdout:
+        if not line.strip():
+            continue
+
+        progress_match = re.search(r'(\d{1,3}\.\d+)%', line)
+        if progress_match:
+            percent = float(progress_match.group(1))
+            blocks = int(percent / 10)
+            bar = "▓" * blocks + "░" * (10 - blocks)
+            now = time.time()
+            if now - last_edit_time > 1:
+                try:
+                    bot.edit_message_text(
+                        f"📥 Прогресс: `{bar} {percent:.1f}%`",
+                        chat_id=chat_id,
+                        message_id=status_message.message_id,
+                        parse_mode="Markdown"
+                    )
+                    last_edit_time = now
+                except Exception:
+                    # Игнорируем ошибки редактирования, чтобы не упал процесс скачивания
+                    pass
+
+    process.wait()
+
+    if process.returncode != 0:
+        raise RuntimeError("Загрузка завершилась с ошибкой (yt-dlp)")
+
+    downloaded_files = [f for f in os.listdir(download_dir) if f.endswith(('.mp4', '.mkv'))]
+    if not downloaded_files:
+        raise RuntimeError("Не удалось найти загруженное видео после скачивания")
+
+    return os.path.join(download_dir, downloaded_files[0])
 
 
 @bot.message_handler(content_types=['text'])
@@ -437,28 +504,60 @@ def handle_download_request(message):
         message.from_user.username,
         message.text
     )
+
     url = message.text
-    bot.reply_to(message, "Начинаю загрузку видео...")
+
+    # Первичное сообщение — его будем обновлять
+    status_message = bot.reply_to(message, "🔄 Начинаю загрузку видео...")
 
     try:
-        # Скачивание видео
-        video_path, width, height = download_video_file(url)
+        # 1. Скачивание с прогрессом (через yt-dlp CLI)
+        video_path = download_with_progress(
+            url=url,
+            bot=bot,
+            chat_id=message.chat.id,
+            status_message=status_message,
+            download_dir=config.DOWNLOAD_DIR,
+        )
 
-        # Отправка видео
+        # 2. Обработка видео (как было)
+        fixed_video_path, width, height = process_video(video_path)
+
+        # 3. Отправка видео
         send_video_to_user(
             bot,
             message.chat.id,
             message.from_user.id,
             message.from_user.username,
             url,
-            video_path,
+            fixed_video_path,
             width,
             height,
-            config.ADMIN_ID  # Передаем ID администратора
+            config.ADMIN_ID
         )
 
-    except RuntimeError as e:
-        bot.reply_to(message, str(e))
+        # 4. Обновляем статус
+        bot.edit_message_text(
+            "✅ Видео готово и отправлено.",
+            chat_id=message.chat.id,
+            message_id=status_message.message_id,
+        )
+
+        # 5. Удаляем файл
+        if os.path.exists(fixed_video_path):
+            os.remove(fixed_video_path)
+
+    except Exception as e:
+        # Если что-то пошло не так — редактируем статусное сообщение
+        try:
+            bot.edit_message_text(
+                f"🚫 Ошибка при скачивании: {e}",
+                chat_id=message.chat.id,
+                message_id=status_message.message_id,
+            )
+        except Exception:
+            bot.reply_to(message, f"🚫 Ошибка при скачивании: {e}")
+
 
 
 def main():
