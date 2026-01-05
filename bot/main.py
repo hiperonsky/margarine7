@@ -478,6 +478,7 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         "--no-playlist",
         "--restrict-filenames",
         "--geo-bypass",
+        "--concurrent-fragments", "4",
         "--retries", "5",
         "--fragment-retries", "5",
         "--continue",
