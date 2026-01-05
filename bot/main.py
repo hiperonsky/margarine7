@@ -356,36 +356,46 @@ async def send_welcome(message):
 
 
 @bot.message_handler(commands=['show_downloads'])
-def show_downloads(message):
+async def show_downloads(message):
     if message.from_user.id == config.ADMIN_ID:
         try:
-            files = downloads_manager.list_downloads(config.DOWNLOAD_DIR)
+            # downloads_manager.list_downloads синхронный → в поток
+            files = await asyncio.to_thread(
+                downloads_manager.list_downloads,
+                config.DOWNLOAD_DIR
+            )
             if files:
-                bot.send_message(
+                await bot.send_message(
                     message.chat.id,
                     "Содержимое папки downloads:\n" + "\n".join(files)
                 )
             else:
-                bot.send_message(message.chat.id, "Папка downloads пуста.")
+                await bot.send_message(message.chat.id, "Папка downloads пуста.")
         except Exception as e:
-            bot.send_message(
+            await bot.send_message(
                 message.chat.id,
                 f"Ошибка при получении содержимого папки: {e}"
             )
     else:
-        bot.reply_to(message, "Эта команда доступна только администратору.")
+        await bot.reply_to(message, "Эта команда доступна только администратору.")
+
 
 
 @bot.message_handler(commands=['clean_downloads'])
-def clean_downloads(message):
+async def clean_downloads(message):
     if message.from_user.id == config.ADMIN_ID:
         try:
-            downloads_manager.clean_downloads(config.DOWNLOAD_DIR)
-            bot.send_message(message.chat.id, "Папка downloads очищена.")
+            # синхронная очистка → в поток
+            await asyncio.to_thread(
+                downloads_manager.clean_downloads,
+                config.DOWNLOAD_DIR
+            )
+            await bot.send_message(message.chat.id, "Папка downloads очищена.")
         except Exception as e:
-            bot.send_message(message.chat.id, f"Ошибка при очистке папки: {e}")
+            await bot.send_message(message.chat.id, f"Ошибка при очистке папки: {e}")
     else:
-        bot.reply_to(message, "Эта команда доступна только администратору.")
+        await bot.reply_to(message, "Эта команда доступна только администратору.")
+
 
 
 def get_format_str(url):
