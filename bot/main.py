@@ -61,9 +61,8 @@ def sanitize_filepath(filepath):
     return os.path.join(directory, sanitized_filename)
 
 
-def notify_admin(user_id, username, message_text):
-
-    bot.send_message(
+async def notify_admin(user_id, username, message_text):
+    await bot.send_message(
         config.ADMIN_ID,
         f"🔔 Новый пользователь:\n"
         f"ID: {user_id}\n"
@@ -72,16 +71,18 @@ def notify_admin(user_id, username, message_text):
     )
 
 
-def is_subscribed(user_id):
+
+async def is_subscribed(user_id):
     """
     Проверяет, подписан ли пользователь на канал.
     """
     try:
-        chat_member = bot.get_chat_member(config.CHANNEL_USERNAME, user_id)
+        chat_member = await bot.get_chat_member(config.CHANNEL_USERNAME, user_id)
         return chat_member.status in ['member', 'administrator', 'creator']
     except Exception as e:
         print(f"Ошибка при проверке подписки: {e}")
         return False
+
 
 
 def process_video(video_path):
@@ -321,23 +322,21 @@ def instagram_test(message):
 
 
 @bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    notify_admin(
+async def send_welcome(message):
+    await notify_admin(
         message.from_user.id,
         message.from_user.username,
         message.text
     )
 
-    # Приветственное сообщение
-    bot.reply_to(
+    await bot.reply_to(
         message,
         "Привет! Отправь мне ссылку на видео, и я скачаю его для тебя"
     )
 
-    # Отправка видеоинструкции
     try:
         with open("margarine_intro.mp4", "rb") as video:
-            bot.send_video(
+            await bot.send_video(
                 message.chat.id,
                 video,
                 caption=(
@@ -346,13 +345,14 @@ def send_welcome(message):
                 )
             )
     except Exception as e:
-        bot.send_message(
+        await bot.send_message(
             config.ADMIN_ID,
             f"⚠️ Ошибка при отправке видеоинструкции:\n\n"
             f"Пользователь: @{message.from_user.username} "
             f"(ID: {message.from_user.id})\n"
             f"Ошибка: {e}"
         )
+
 
 
 @bot.message_handler(commands=['show_downloads'])
@@ -532,7 +532,7 @@ async def handle_download_request(message):
     log(f"[BOT] handle_download_request from {message.from_user.id}: {message.text}")
 
     # Проверка подписки (is_subscribed синхронный → уводим в поток)
-    is_sub = await asyncio.to_thread(is_subscribed, message.from_user.id)
+    is_sub = await is_subscribed(message.from_user.id)
     if not is_sub:
         await bot.reply_to(
             message,
@@ -544,8 +544,7 @@ async def handle_download_request(message):
         return
 
     # Уведомление админа (notify_admin синхронный → в поток)
-    await asyncio.to_thread(
-        notify_admin,
+    await notify_admin(
         message.from_user.id,
         message.from_user.username,
         message.text,
