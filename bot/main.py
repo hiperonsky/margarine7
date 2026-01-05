@@ -421,9 +421,13 @@ def download_video_file(url):
     except Exception as e:
         raise RuntimeError(f"[BOT] Ошибка при скачивании видео: {e}")
     
+def log(msg: str):
+    print(msg, flush=True)
+
+
 
 def download_with_progress(url, bot, chat_id, status_message, download_dir):
-    print(f"[BOT] download_with_progress called for url={url}")
+    log(f"[BOT] download_with_progress called for url={url}")
     os.makedirs(download_dir, exist_ok=True)
     output_template = os.path.join(download_dir, '%(title)s.%(ext)s')
     format_str = get_format_str(url)
@@ -446,7 +450,7 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         url,
     ]
 
-    print(f"[BOT] running command: {' '.join(ytdlp_command)}")
+    log(f"[BOT] running command: {' '.join(ytdlp_command)}")
 
     process = subprocess.Popen(
         ytdlp_command,
@@ -464,7 +468,7 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
             continue
 
         output_lines.append(line)
-        print(f"[yt-dlp] {line.strip()}")
+        log(f"[yt-dlp] {line.strip()}")
 
         progress_match = re.search(r'(\d{1,3}\.\d+)%', line)
         if progress_match:
@@ -486,11 +490,11 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
                     pass
 
     process.wait()
-    print(f"[BOT] yt-dlp returncode={process.returncode}")
+    log(f"[BOT] yt-dlp returncode={process.returncode}")
 
     if process.returncode != 0:
         debug_output = "".join(output_lines)
-        print(f"[yt-dlp ERROR] output:\n{debug_output}")
+        log(f"[yt-dlp ERROR] output:\n{debug_output}")
         raise RuntimeError("Загрузка завершилась с ошибкой (yt-dlp)")
 
     downloaded_files = [f for f in os.listdir(download_dir) if f.endswith(('.mp4', '.mkv'))]
@@ -502,7 +506,7 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
 
 @bot.message_handler(content_types=['text'])
 def handle_download_request(message):
-    print(f"[BOT] handle_download_request from {message.from_user.id}: {message.text}")
+    log(f"[BOT] handle_download_request from {message.from_user.id}: {message.text}")
     if not is_subscribed(message.from_user.id):
         bot.reply_to(
             message,
