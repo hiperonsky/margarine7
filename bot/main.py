@@ -446,6 +446,8 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         url,
     ]
 
+    print(f"[BOT] running command: {' '.join(ytdlp_command)}")
+
     process = subprocess.Popen(
         ytdlp_command,
         stdout=subprocess.PIPE,
@@ -458,6 +460,9 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
     for line in process.stdout:
         if not line.strip():
             continue
+
+        output_lines.append(line)
+        print(f"[yt-dlp] {line.strip()}")
 
         progress_match = re.search(r'(\d{1,3}\.\d+)%', line)
         if progress_match:
@@ -479,8 +484,11 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
                     pass
 
     process.wait()
+    print(f"[BOT] yt-dlp returncode={process.returncode}")
 
     if process.returncode != 0:
+        debug_output = "".join(output_lines)
+        print(f"[yt-dlp ERROR] output:\n{debug_output}")
         raise RuntimeError("Загрузка завершилась с ошибкой (yt-dlp)")
 
     downloaded_files = [f for f in os.listdir(download_dir) if f.endswith(('.mp4', '.mkv'))]
