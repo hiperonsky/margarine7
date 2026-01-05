@@ -17,6 +17,27 @@ bot = telebot.TeleBot(config.TELEGRAM_BOT_TOKEN)
 if not os.path.exists(config.DOWNLOAD_DIR):
     os.makedirs(config.DOWNLOAD_DIR)
 
+
+PROGRESS_BARS = [
+    "[░░░░░░░░░░]",
+    "[▓░░░░░░░░░]",
+    "[▓▓░░░░░░░░]",
+    "[▓▓▓░░░░░░░]",
+    "[▓▓▓▓░░░░░░]",
+    "[▓▓▓▓▓░░░░░]",
+    "[▓▓▓▓▓▓░░░░]",
+    "[▓▓▓▓▓▓▓░░░]",
+    "[▓▓▓▓▓▓▓▓░░]",
+    "[▓▓▓▓▓▓▓▓▓░]",
+    "[▓▓▓▓▓▓▓▓▓▓]",
+]
+
+def get_next_bar(index: int) -> tuple[str, int]:
+    """Возвращает следующий вариант бара и новый индекс."""
+    index = (index + 1) % len(PROGRESS_BARS)
+    return PROGRESS_BARS[index], index
+
+
 # test comment 08/10/2025
 def sanitize_filename(filename):
     """
@@ -462,6 +483,7 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
 
     output_lines = []  # ← инициализация ДО цикла
     last_edit_time = 0
+    bar_index = -1  # начальное состояние
 
     for line in process.stdout:
         if not line.strip():
@@ -473,9 +495,10 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
 
         now = time.time()
         if now - last_edit_time > 0.7:  # не чаще раза в секунду
+            bar, bar_index = get_next_bar(bar_index)
             try:
                 bot.edit_message_text(
-                    text[-4000:],              # последняя строка лога yt-dlp
+                    f"📥 Загрузка... {bar}",
                     chat_id=chat_id,
                     message_id=status_message.message_id
                 )
