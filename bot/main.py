@@ -460,47 +460,29 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         bufsize=1
     )
 
-    output_lines = []  # ← инициализация ДО цикла
+output_lines = []
+last_edit_time = 0
 
-    last_edit_time = 0
-    for line in process.stdout:
-        if not line.strip():
-            continue
+for line in process.stdout:
+    if not line.strip():
+        continue
 
-        output_lines.append(line)
-        log(f"[yt-dlp] {line.strip()}")
+    text = line.rstrip("\n")
+    output_lines.append(text)
+    log(f"[yt-dlp] {text}")
 
-        text = line.strip()
-
-        # интересуют только строки с прогрессом
-        if "[download]" not in text:
-            continue
-
-        # ищем проценты вида 3%, 12.3%, 100%
-        progress_match = re.search(r'(\d{1,3}(?:\.\d+)?)%', text)
-        if not progress_match:
-            continue
-
-        percent = float(progress_match.group(1))
-        if percent < 0 or percent > 100:
-            continue
-
-        blocks = int(percent / 10)
-        bar = "▓" * blocks + "░" * (10 - blocks)
-
-        now = time.time()
-        if now - last_edit_time > 1:  # не чаще раза в секунду
-            try:
-                bot.edit_message_text(
-                    f"📥 Прогресс: `{bar} {percent:.1f}%`",
-                    chat_id=chat_id,
-                    message_id=status_message.message_id,
-                    parse_mode="Markdown"
-                )
-                last_edit_time = now
-            except Exception:
-                # игнорируем ошибки телеграма, чтобы не ронять загрузку
-                pass
+    now = time.time()
+    if now - last_edit_time > 1:  # не чаще раза в секунду
+        try:
+            bot.edit_message_text(
+                f"```{text[-4000:]}```",   # последний лог yt-dlp, обрезаем если длинный
+                chat_id=chat_id,
+                message_id=status_message.message_id,
+                parse_mode="Markdown"
+            )
+            last_edit_time = now
+        except Exception:
+            pass
 
     process.wait()
     log(f"[BOT] yt-dlp returncode={process.returncode}")
