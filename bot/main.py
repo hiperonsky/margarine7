@@ -456,6 +456,8 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         bufsize=1
     )
 
+    output_lines = []  # ← инициализация ДО цикла
+
     last_edit_time = 0
     for line in process.stdout:
         if not line.strip():
