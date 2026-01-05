@@ -583,8 +583,7 @@ async def handle_download_request(message):
         )
 
         # 3. Отправка видео пользователю (send_video_to_user синхронный)
-        await asyncio.to_thread(
-            send_video_to_user,
+        await send_video_to_user(
             bot,
             message.chat.id,
             message.from_user.id,
