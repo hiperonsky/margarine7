@@ -374,7 +374,8 @@ def get_format_str(url):
         )
 
 
-def download_with_options(url, use_tor=False):
+#def download_with_options(url, use_tor=False):
+def download_with_options(url):
     ydl_opts = {
         'format': get_format_str(url),
         'outtmpl': f'{config.DOWNLOAD_DIR}/%(title)s.%(ext)s',
@@ -392,9 +393,9 @@ def download_with_options(url, use_tor=False):
         'continuedl': True,
     }
 
-    if use_tor:
-        ydl_opts['proxy'] = 'socks5://127.0.0.1:9050'
-        ydl_opts['cookiefile'] = '/root/Margarine6_bot/web_auth_storage.txt'
+#    if use_tor:
+#        ydl_opts['proxy'] = 'socks5://127.0.0.1:9050'
+#        ydl_opts['cookiefile'] = '/root/Margarine6_bot/web_auth_storage.txt'
 
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -402,15 +403,21 @@ def download_with_options(url, use_tor=False):
         return process_video(video_path)
 
 
+#def download_video_file(url):
+#    try:
+#        return download_with_options(url)
+#    except Exception as e:
+#        print(f"[BOT] Ошибка при первой попытке скачивания: {e}")
+#        try:
+#            return download_with_options(url, use_tor=True)
+#        except Exception as e2:
+#            raise RuntimeError(f"[BOT] Ошибка даже через Tor: {e2}")
+        
 def download_video_file(url):
     try:
         return download_with_options(url)
     except Exception as e:
-        print(f"[BOT] Ошибка при первой попытке скачивания: {e}")
-        try:
-            return download_with_options(url, use_tor=True)
-        except Exception as e2:
-            raise RuntimeError(f"[BOT] Ошибка даже через Tor: {e2}")
+        raise RuntimeError(f"[BOT] Ошибка при скачивании видео: {e}")
 
 
 @bot.message_handler(content_types=['text'])
