@@ -476,14 +476,11 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         "--merge-output-format", "mp4",
         "--force-keyframes-at-cuts",
         "--no-playlist",
-#        "--no-sabr",
         "--restrict-filenames",
         "--geo-bypass",
         "--retries", "5",
         "--fragment-retries", "5",
         "--continue",
-#        "--no-warnings",
-#        "--quiet",
         url,
     ]
 
@@ -497,30 +494,13 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         bufsize=1
     )
 
-    output_lines = []  # ← инициализация ДО цикла
-    last_edit_time = 0
-    bar_index = -1  # начальное состояние
-
+    output_lines = []
     for line in process.stdout:
         if not line.strip():
             continue
-
         text = line.rstrip("\n")
         output_lines.append(text)
         log(f"[yt-dlp] {text}")
-
-        now = time.time()
-        if now - last_edit_time > 0.7:  # не чаще раза в секунду
-            bar, bar_index = get_next_bar(bar_index)
-            try:
-                bot.edit_message_text(
-                    f"📥 Загрузка... {bar}",
-                    chat_id=chat_id,
-                    message_id=status_message.message_id
-                )
-                last_edit_time = now
-            except Exception:
-                pass
 
     process.wait()
     log(f"[BOT] yt-dlp returncode={process.returncode}")
@@ -530,11 +510,15 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         log(f"[yt-dlp ERROR] output:\n{debug_output}")
         raise RuntimeError("Загрузка завершилась с ошибкой (yt-dlp)")
 
-    downloaded_files = [f for f in os.listdir(download_dir) if f.endswith(('.mp4', '.mkv'))]
+    downloaded_files = [
+        f for f in os.listdir(download_dir)
+        if f.endswith(('.mp4', '.mkv'))
+    ]
     if not downloaded_files:
         raise RuntimeError("Не удалось найти загруженное видео после скачивания")
 
     return os.path.join(download_dir, downloaded_files[0])
+
 
 
 @bot.message_handler(content_types=['text'])
