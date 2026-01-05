@@ -4,15 +4,21 @@ from yt_dlp import YoutubeDL
 import subprocess
 import re
 import time
+import asyncio  # ← ДОБАВИТЬ
 
-from bot import config  # ← было просто config
-from bot import downloads_manager  # ← было просто downloads_manager
-from bot.video_sender import send_video_to_user  # ← указали путь через bot
+from telebot.async_telebot import AsyncTeleBot  # ← ДОБАВИТЬ
+
+from bot import config
+from bot import downloads_manager
+from bot.video_sender import send_video_to_user
 
 from yt_dlp.utils import DownloadError
 
+# БЫЛО:
+# bot = telebot.TeleBot(config.TELEGRAM_BOT_TOKEN)
+# СТАЛО:
+bot = AsyncTeleBot(config.TELEGRAM_BOT_TOKEN)
 
-bot = telebot.TeleBot(config.TELEGRAM_BOT_TOKEN)
 
 if not os.path.exists(config.DOWNLOAD_DIR):
     os.makedirs(config.DOWNLOAD_DIR)
@@ -522,10 +528,13 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
 
 
 @bot.message_handler(content_types=['text'])
-def handle_download_request(message):
+async def handle_download_request(message):
     log(f"[BOT] handle_download_request from {message.from_user.id}: {message.text}")
-    if not is_subscribed(message.from_user.id):
-        bot.reply_to(
+
+    # Проверка подписки (is_subscribed синхронный → уводим в поток)
+    is_sub = await asyncio.to_thread(is_subscribed, message.from_user.id)
+    if not is_sub:
+        await bot.reply_to(
             message,
             "Бот бесплатный, но работает только для подписчиков "
             "моего телеграм канала: "
@@ -534,32 +543,39 @@ def handle_download_request(message):
         )
         return
 
-    notify_admin(
+    # Уведомление админа (notify_admin синхронный → в поток)
+    await asyncio.to_thread(
+        notify_admin,
         message.from_user.id,
         message.from_user.username,
-        message.text
+        message.text,
     )
 
     url = message.text
 
     # Первичное сообщение — его будем обновлять
-    status_message = bot.reply_to(message, "🔄 Начинаю загрузку видео...")
+    status_message = await bot.reply_to(message, "🔄 Начинаю загрузку видео...")
 
     try:
-        # 1. Скачивание с прогрессом (через yt-dlp CLI)
-        video_path = download_with_progress(
-            url=url,
-            bot=bot,
-            chat_id=message.chat.id,
-            status_message=status_message,
-            download_dir=config.DOWNLOAD_DIR,
+        # 1. Скачивание с прогрессом (синхронная функция в отдельном потоке)
+        video_path = await asyncio.to_thread(
+            download_with_progress,
+            url,
+            bot,                 # объект бота можно прокинуть как есть
+            message.chat.id,
+            status_message,
+            config.DOWNLOAD_DIR,
         )
 
-        # 2. Обработка видео (как было)
-        fixed_video_path, width, height = process_video(video_path)
+        # 2. Обработка видео (process_video синхронный)
+        fixed_video_path, width, height = await asyncio.to_thread(
+            process_video,
+            video_path,
+        )
 
-        # 3. Отправка видео
-        send_video_to_user(
+        # 3. Отправка видео пользователю (send_video_to_user синхронный)
+        await asyncio.to_thread(
+            send_video_to_user,
             bot,
             message.chat.id,
             message.from_user.id,
@@ -568,36 +584,36 @@ def handle_download_request(message):
             fixed_video_path,
             width,
             height,
-            config.ADMIN_ID
+            config.ADMIN_ID,
         )
 
-        # 4. Обновляем статус
-        bot.edit_message_text(
+        # 4. Обновляем статус (уже async‑метод)
+        await bot.edit_message_text(
             "✅ Видео готово и отправлено.",
             chat_id=message.chat.id,
             message_id=status_message.message_id,
         )
 
-        # 5. Удаляем файл
-        if os.path.exists(fixed_video_path):
-            os.remove(fixed_video_path)
+        # 5. Удаляем файл после отправки (на всякий случай)
+        await asyncio.to_thread(
+            os.remove,
+            fixed_video_path,
+        ) if os.path.exists(fixed_video_path) else None
 
     except Exception as e:
         # Если что-то пошло не так — редактируем статусное сообщение
         try:
-            bot.edit_message_text(
+            await bot.edit_message_text(
                 f"🚫 Ошибка при скачивании: {e}",
                 chat_id=message.chat.id,
                 message_id=status_message.message_id,
             )
         except Exception:
-            bot.reply_to(message, f"🚫 Ошибка при скачивании: {e}")
+            await bot.reply_to(message, f"🚫 Ошибка при скачивании: {e}")
+
 
 
 
 def main():
-    # здесь запускается твой бот
-    bot.polling()  # или executor.start_polling(...) — зависит от реализации
-
-if __name__ == "__main__":
-    main()
+    # для AsyncTeleBot нужно вызывать асинхронный polling
+    asyncio.run(bot.infinity_polling())  # или bot.polling(), но infinity_polling рекомендован[web:70]
