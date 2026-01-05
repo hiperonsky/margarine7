@@ -439,7 +439,7 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         "--merge-output-format", "mp4",
         "--force-keyframes-at-cuts",
         "--no-playlist",
-        "--no-sabr",
+#        "--no-sabr",
         "--restrict-filenames",
         "--geo-bypass",
         "--retries", "5",
