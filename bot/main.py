@@ -460,29 +460,32 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
         bufsize=1
     )
 
-output_lines = []
-last_edit_time = 0
+    output_lines = []  # ← инициализация ДО цикла
 
-for line in process.stdout:
-    if not line.strip():
-        continue
+    last_edit_time = 0
+    for line in process.stdout:
+        if not line.strip():
+            continue
 
-    text = line.rstrip("\n")
-    output_lines.append(text)
-    log(f"[yt-dlp] {text}")
+        output_lines.append(line)
+        log(f"[yt-dlp] {line.strip()}")
 
-    now = time.time()
-    if now - last_edit_time > 1:  # не чаще раза в секунду
-        try:
-            bot.edit_message_text(
-                f"```{text[-4000:]}```",   # последний лог yt-dlp, обрезаем если длинный
-                chat_id=chat_id,
-                message_id=status_message.message_id,
-                parse_mode="Markdown"
-            )
-            last_edit_time = now
-        except Exception:
-            pass
+        text = line.rstrip("\n")
+        output_lines.append(text)
+        log(f"[yt-dlp] {text}")
+
+        now = time.time()
+        if now - last_edit_time > 1:  # не чаще раза в секунду
+            try:
+                bot.edit_message_text(
+                    f"```{text[-4000:]}```",   # последний лог yt-dlp, обрезаем если длинный
+                    chat_id=chat_id,
+                    message_id=status_message.message_id,
+                    parse_mode="Markdown"
+                )
+                last_edit_time = now
+            except Exception:
+                pass
 
     process.wait()
     log(f"[BOT] yt-dlp returncode={process.returncode}")
