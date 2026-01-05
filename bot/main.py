@@ -423,6 +423,7 @@ def download_video_file(url):
     
 
 def download_with_progress(url, bot, chat_id, status_message, download_dir):
+    print(f"[BOT] download_with_progress called for url={url}")
     os.makedirs(download_dir, exist_ok=True)
     output_template = os.path.join(download_dir, '%(title)s.%(ext)s')
     format_str = get_format_str(url)
@@ -491,6 +492,7 @@ def download_with_progress(url, bot, chat_id, status_message, download_dir):
 
 @bot.message_handler(content_types=['text'])
 def handle_download_request(message):
+    print(f"[BOT] handle_download_request from {message.from_user.id}: {message.text}")
     if not is_subscribed(message.from_user.id):
         bot.reply_to(
             message,
